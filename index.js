@@ -7,7 +7,8 @@ import {
   ButtonStyle,
   ChannelType,
   PermissionsBitField,
-  EmbedBuilder
+  EmbedBuilder,
+  StringSelectMenuBuilder
 } from "discord.js";
 
 import dotenv from "dotenv";
@@ -23,142 +24,124 @@ const client = new Client({
 });
 
 /* =========================
-   ⚙️ CONFIG FIJA
+   🧠 CONFIG SAAS (EDITABLE)
 ========================= */
-const CONFIG = {
-  CATEGORY_NAME: "🎫・SOPORTE Y PEDIDOS",
-  TICKET_CHANNEL: "🎫・crear-ticket",
-  STAFF_ROLE_NAME: "STAFF BOT",
-  LOG_CHANNEL: "logs-tickets"
-};
+const DB = new Map();
 
 /* =========================
-   🟢 READY
+   🟢 READY (FIX IMPORTANTE)
 ========================= */
-client.once("clientReady", async () => {
-  console.log(`✅ UziBoost ONLINE como ${client.user.tag}`);
-
-  const guild = client.guilds.cache.first();
-  if (!guild) return;
-
-  console.log("🔧 Configuración automática iniciada");
+client.once("ready", () => {
+  console.log(`✅ SAAS BOT ONLINE: ${client.user.tag}`);
 });
 
 /* =========================
-   🎫 PANEL AUTOMÁTICO
+   ⚙️ SETUP CONFIG
 ========================= */
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (message.content === "!setup") {
-    const channel = message.guild.channels.cache.find(
-      c => c.name === CONFIG.TICKET_CHANNEL
-    );
+    const config = {
+      category: message.guild.channels.cache.find(c => c.name === "🎫・SOPORTE Y PEDIDOS")?.id,
+      logs: message.guild.channels.cache.find(c => c.name === "logs-tickets")?.id
+    };
 
-    if (!channel) {
-      return message.reply("❌ No existe el canal 🎫・crear-ticket");
-    }
+    DB.set(message.guild.id, config);
 
+    return message.reply("✅ Sistema SAAS configurado correctamente");
+  }
+
+  /* =========================
+     🎫 PANEL
+  ========================= */
+  if (message.content === "!panel") {
     const embed = new EmbedBuilder()
-      .setTitle("🎫 UziBoost Tickets")
-      .setDescription(
-        "Presiona el botón para abrir un ticket.\n\n" +
-        "🔧 Soporte\n💰 Pedidos\n⚡ Optimización"
-      )
+      .setTitle("🎫 UziBoost SAAS Support")
+      .setDescription("Selecciona una opción para abrir ticket")
       .setColor("#a855f7");
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("create_ticket")
-        .setLabel("🎫 Abrir Ticket")
-        .setStyle(ButtonStyle.Success)
+    const menu = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("ticket_menu")
+        .setPlaceholder("Selecciona categoría")
+        .addOptions(
+          { label: "Soporte", value: "soporte", emoji: "🔧" },
+          { label: "Compras", value: "compras", emoji: "💰" },
+          { label: "Optimización", value: "opt", emoji: "⚡" }
+        )
     );
 
-    return channel.send({
+    return message.channel.send({
       embeds: [embed],
-      components: [row]
+      components: [menu]
     });
   }
 });
 
 /* =========================
-   🎫 TICKETS
+   🎫 TICKETS PRO
 ========================= */
 client.on("interactionCreate", async (interaction) => {
-  try {
-    if (!interaction.isButton()) return;
+  if (!interaction.isStringSelectMenu()) return;
 
-    /* CREAR TICKET */
-    if (interaction.customId === "create_ticket") {
+  if (interaction.customId === "ticket_menu") {
+    const config = DB.get(interaction.guild.id);
 
-      const category = interaction.guild.channels.cache.find(
-        c => c.name === CONFIG.CATEGORY_NAME
-      );
-
-      const staffRole = interaction.guild.roles.cache.find(
-        r => r.name === CONFIG.STAFF_ROLE_NAME
-      );
-
-      const channel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        parent: category?.id || null,
-        permissionOverwrites: [
-          {
-            id: interaction.guild.id,
-            deny: [PermissionsBitField.Flags.ViewChannel]
-          },
-          {
-            id: interaction.user.id,
-            allow: [
-              PermissionsBitField.Flags.ViewChannel,
-              PermissionsBitField.Flags.SendMessages,
-              PermissionsBitField.Flags.ReadMessageHistory
-            ]
-          },
-          ...(staffRole
-            ? [{
-                id: staffRole.id,
-                allow: [
-                  PermissionsBitField.Flags.ViewChannel,
-                  PermissionsBitField.Flags.SendMessages,
-                  PermissionsBitField.Flags.ReadMessageHistory
-                ]
-              }]
-            : [])
-        ]
-      });
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("close_ticket")
-          .setLabel("❌ Cerrar Ticket")
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      await channel.send({
-        content: `🎫 Ticket de <@${interaction.user.id}>`,
-        components: [row]
-      });
-
+    if (!config) {
       return interaction.reply({
-        content: `✅ Ticket creado: ${channel}`,
+        content: "❌ Usa !setup primero",
         ephemeral: true
       });
     }
 
-    /* CERRAR */
+    const channel = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      parent: config.category || null,
+      permissionOverwrites: [
+        {
+          id: interaction.guild.id,
+          deny: [PermissionsBitField.Flags.ViewChannel]
+        },
+        {
+          id: interaction.user.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory
+          ]
+        }
+      ]
+    });
+
+    const btn = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("close_ticket")
+        .setLabel("❌ Cerrar")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await channel.send({
+      content: `🎫 Ticket de <@${interaction.user.id}>`,
+      components: [btn]
+    });
+
+    return interaction.reply({
+      content: `✅ Ticket creado: ${channel}`,
+      ephemeral: true
+    });
+  }
+
+  /* =========================
+     ❌ CLOSE
+  ========================= */
+  if (interaction.isButton()) {
     if (interaction.customId === "close_ticket") {
-      await interaction.reply("🔒 Cerrando ticket...");
+      await interaction.reply("🔒 Cerrando...");
       setTimeout(() => interaction.channel.delete().catch(() => {}), 2000);
     }
-
-  } catch (err) {
-    console.log("ERROR:", err);
   }
 });
 
-/* =========================
-   🔑 LOGIN
-========================= */
 client.login(process.env.TOKEN);
