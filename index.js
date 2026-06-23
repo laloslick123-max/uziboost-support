@@ -1,12 +1,16 @@
 import {
   Client,
   GatewayIntentBits,
-  Partials,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  ChannelType,
+  PermissionsBitField,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
-  PermissionsBitField
+  EmbedBuilder,
+  StringSelectMenuBuilder
 } from "discord.js";
 
 import dotenv from "dotenv";
@@ -15,49 +19,145 @@ dotenv.config();
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ],
-  partials: [Partials.Channel]
+    GatewayIntentBits.GuildMessages
+  ]
 });
 
-client.once("clientReady", () => {
-  console.log(`✅ Bot online como ${client.user.tag}`);
+/* =========================
+   🧠 CONFIG EN MEMORIA (por server)
+========================= */
+const config = new Map();
+
+/* =========================
+   🔥 SLASH COMMANDS
+========================= */
+const commands = [
+  new SlashCommandBuilder()
+    .setName("panel")
+    .setDescription("Sistema de tickets UziBoost")
+    .addSubcommand(s =>
+      s.setName("setup")
+        .setDescription("Configurar sistema de tickets")
+        .addChannelOption(o =>
+          o.setName("canal")
+            .setDescription("Canal donde irá el panel")
+            .setRequired(true)
+        )
+        .addChannelOption(o =>
+          o.setName("categoria")
+            .setDescription("Categoría donde se crearán tickets")
+            .setRequired(true)
+        )
+        .addChannelOption(o =>
+          o.setName("logs")
+            .setDescription("Canal de logs")
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(s =>
+      s.setName("send")
+        .setDescription("Enviar panel de tickets")
+        .addChannelOption(o =>
+          o.setName("canal")
+            .setDescription("Canal donde enviar")
+            .setRequired(true)
+        )
+    )
+].map(c => c.toJSON());
+
+/* =========================
+   🚀 REGISTER COMMANDS
+========================= */
+client.once("ready", async () => {
+  console.log(`✅ Online como ${client.user.tag}`);
+
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+  await rest.put(
+    Routes.applicationCommands(client.user.id),
+    { body: commands }
+  );
 });
 
-/* ======================
-   PANEL
-====================== */
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
-
-  if (message.content === "!panel") {
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("create_ticket")
-        .setLabel("🎫 Crear Ticket")
-        .setStyle(ButtonStyle.Success)
-    );
-
-    return message.channel.send({
-      content: "🎫 Panel de Tickets UziBoost",
-      components: [row]
-    });
-  }
-});
-
-/* ======================
-   INTERACTIONS (TICKETS)
-====================== */
+/* =========================
+   ⚙️ SLASH LOGIC
+========================= */
 client.on("interactionCreate", async (interaction) => {
-  try {
-    if (!interaction.isButton()) return;
 
-    // CREAR TICKET
-    if (interaction.customId === "create_ticket") {
+  /* ===== PANEL ===== */
+  if (interaction.isChatInputCommand()) {
+
+    const sub = interaction.options.getSubcommand();
+    const guildId = interaction.guild.id;
+
+    if (sub === "setup") {
+      const canal = interaction.options.getChannel("canal");
+      const categoria = interaction.options.getChannel("categoria");
+      const logs = interaction.options.getChannel("logs");
+
+      config.set(guildId, {
+        panel: canal.id,
+        category: categoria.id,
+        logs: logs?.id || null
+      });
+
+      return interaction.reply({
+        content: "✅ Sistema configurado correctamente",
+        ephemeral: true
+      });
+    }
+
+    if (sub === "send") {
+      const canal = interaction.options.getChannel("canal");
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎫 UziBoost Support")
+        .setDescription("Selecciona una categoría para abrir ticket")
+        .setColor("#a855f7");
+
+      const menu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId("ticket_select")
+          .setPlaceholder("Selecciona una opción")
+          .addOptions(
+            { label: "Soporte", value: "soporte", emoji: "🔧" },
+            { label: "Compras", value: "compras", emoji: "💰" },
+            { label: "Optimización", value: "opt", emoji: "⚡" }
+          )
+      );
+
+      await canal.send({
+        embeds: [embed],
+        components: [menu]
+      });
+
+      return interaction.reply({
+        content: "📩 Panel enviado",
+        ephemeral: true
+      });
+    }
+  }
+
+  /* ===== TICKETS ===== */
+  if (interaction.isStringSelectMenu()) {
+
+    if (interaction.customId === "ticket_select") {
+
+      const guildConfig = config.get(interaction.guild.id);
+      if (!guildConfig) {
+        return interaction.reply({
+          content: "❌ Sistema no configurado",
+          ephemeral: true
+        });
+      }
+
+      const categoryId = guildConfig.category;
+      const value = interaction.values[0];
+
       const channel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
+        name: `ticket-${value}-${interaction.user.username}`,
         type: ChannelType.GuildText,
+        parent: categoryId,
         permissionOverwrites: [
           {
             id: interaction.guild.id,
@@ -74,7 +174,7 @@ client.on("interactionCreate", async (interaction) => {
         ]
       });
 
-      const row = new ActionRowBuilder().addComponents(
+      const btn = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("close_ticket")
           .setLabel("❌ Cerrar Ticket")
@@ -82,23 +182,23 @@ client.on("interactionCreate", async (interaction) => {
       );
 
       await channel.send({
-        content: `🎫 Ticket creado por <@${interaction.user.id}>`,
-        components: [row]
+        content: `🎫 Ticket de <@${interaction.user.id}>`,
+        components: [btn]
       });
 
       return interaction.reply({
-        content: "✅ Ticket creado correctamente",
+        content: `✅ Ticket creado: ${channel}`,
         ephemeral: true
       });
     }
+  }
 
-    // CERRAR TICKET
+  /* ===== CLOSE ===== */
+  if (interaction.isButton()) {
     if (interaction.customId === "close_ticket") {
-      await interaction.reply("🔒 Cerrando ticket...");
-      setTimeout(() => interaction.channel.delete().catch(() => {}), 2000);
+      await interaction.reply("🔒 Cerrando...");
+      setTimeout(() => interaction.channel.delete(), 2000);
     }
-  } catch (err) {
-    console.log("ERROR INTERACTION:", err);
   }
 });
 
