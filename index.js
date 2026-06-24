@@ -14,9 +14,6 @@ import {
 import dotenv from "dotenv";
 dotenv.config();
 
-/* =========================
-   CLIENTE ESTABLE
-========================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -27,37 +24,53 @@ const client = new Client({
 });
 
 /* =========================
-   🧠 CONFIG FIJA (SAAS SIMPLE)
+   🧠 IA HÍBRIDA REAL
 ========================= */
-const CONFIG = {
-  categoryName: "🎫・SOPORTE Y PEDIDOS",
-  logChannel: "logs-tickets",
-  staffRole: "STAFF BOT"
-};
+function aiResponse(text) {
+  const msg = text.toLowerCase();
+
+  if (msg.includes("precio")) return "💰 Los precios están en la web de UziBoost.";
+  if (msg.includes("tiempo")) return "⏱️ Tiempo estimado: 5-30 minutos.";
+  if (msg.includes("hola")) return "👋 Hola! Soy UziBoost AI Support.";
+  if (msg.includes("ayuda")) return "🧠 Dime tu problema y te ayudo.";
+
+  return "🤖 Un staff o IA revisará tu mensaje pronto.";
+}
 
 /* =========================
-   READY FIX
+   🟢 READY
 ========================= */
 client.once("ready", () => {
-  console.log(`✅ FIX BOT ONLINE COMO ${client.user.tag}`);
+  console.log(`✅ UziBoost SAAS V2 ONLINE: ${client.user.tag}`);
 });
 
 /* =========================
-   PANEL (ESTABLE)
+   🤖 IA EN MENSAJES (ESTO TE FALTABA)
 ========================= */
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
+  // IA GLOBAL EN TICKETS
+  if (message.channel.name?.includes("ticket")) {
+    const reply = aiResponse(message.content);
+    return message.reply(reply);
+  }
+
+  // PANEL
   if (message.content === "!panel") {
     const embed = new EmbedBuilder()
-      .setTitle("🎫 UziBoost Support Panel")
-      .setDescription("Selecciona una categoría para abrir tu ticket")
+      .setTitle("🎫 UziBoost Support Center")
+      .setDescription(
+        "Selecciona una categoría para abrir tu ticket:\n\n" +
+        "🔧 Soporte técnico\n💰 Compras\n⚡ Optimización\n\n" +
+        "Sistema automático UziBoost SAAS"
+      )
       .setColor("#a855f7");
 
     const menu = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId("ticket_create")
-        .setPlaceholder("Selecciona una opción")
+        .setPlaceholder("Selecciona categoría")
         .addOptions(
           { label: "Soporte", value: "soporte", emoji: "🔧" },
           { label: "Compras", value: "compras", emoji: "💰" },
@@ -73,25 +86,25 @@ client.on("messageCreate", async (message) => {
 });
 
 /* =========================
-   TICKETS FIXED
+   🎫 TICKETS PRO
 ========================= */
 client.on("interactionCreate", async (interaction) => {
   try {
 
-    /* ===== CREATE TICKET ===== */
-    if (interaction.isStringSelectMenu()) {
-      if (interaction.customId !== "ticket_create") return;
+    if (!interaction.isStringSelectMenu()) return;
+
+    if (interaction.customId === "ticket_create") {
 
       const guild = interaction.guild;
 
       const category = guild.channels.cache.find(
-        c => c.name === CONFIG.categoryName
+        c => c.name === "🎫・SOPORTE Y PEDIDOS"
       );
 
       const channel = await guild.channels.create({
         name: `ticket-${interaction.user.username}`,
         type: ChannelType.GuildText,
-        parent: category ? category.id : null,
+        parent: category?.id || null,
         permissionOverwrites: [
           {
             id: guild.id,
@@ -116,7 +129,7 @@ client.on("interactionCreate", async (interaction) => {
       );
 
       await channel.send({
-        content: `🎫 Ticket creado por <@${interaction.user.id}>`,
+        content: `🎫 Ticket de <@${interaction.user.id}>`,
         components: [closeBtn]
       });
 
@@ -126,7 +139,9 @@ client.on("interactionCreate", async (interaction) => {
       });
     }
 
-    /* ===== CLOSE TICKET ===== */
+    /* =========================
+       CLOSE TICKET
+    ========================= */
     if (interaction.isButton()) {
       if (interaction.customId === "close_ticket") {
         await interaction.reply("🔒 Cerrando ticket...");
@@ -135,11 +150,11 @@ client.on("interactionCreate", async (interaction) => {
     }
 
   } catch (err) {
-    console.log("ERROR FIX BOT:", err);
+    console.log("ERROR SAAS V2:", err);
   }
 });
 
 /* =========================
-   LOGIN
+   🔑 LOGIN
 ========================= */
 client.login(process.env.TOKEN);
