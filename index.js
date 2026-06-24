@@ -28,7 +28,7 @@ const client = new Client({
 });
 
 /* =========================
-   IA
+   IA OPENAI
 ========================= */
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -41,15 +41,19 @@ async function ai(text) {
       messages: [
         {
           role: "system",
-          content: "Eres soporte profesional de UziBoost. Responde claro y corto."
+          content: "Eres soporte profesional de UziBoost. Responde claro, corto y útil."
         },
-        { role: "user", content: text }
+        {
+          role: "user",
+          content: text
+        }
       ]
     });
 
     return res.choices[0].message.content;
-  } catch {
-    return "⚠️ IA no disponible";
+  } catch (err) {
+    console.log("IA ERROR:", err);
+    return "⚠️ IA no disponible en este momento.";
   }
 }
 
@@ -57,11 +61,11 @@ async function ai(text) {
    READY
 ========================= */
 client.once("ready", () => {
-  console.log(`🔥 SAAS BOT ONLINE: ${client.user.tag}`);
+  console.log(`🔥 UziBoost SAAS ONLINE: ${client.user.tag}`);
 });
 
 /* =========================
-   SLASH COMMAND (/panel)
+   SLASH PANEL
 ========================= */
 client.on("interactionCreate", async (interaction) => {
 
@@ -116,25 +120,56 @@ Selecciona una opción:
 });
 
 /* =========================
-   BOTONES + TICKETS
+   BOTONES + TICKETS + IA
 ========================= */
 client.on("interactionCreate", async (interaction) => {
 
   if (!interaction.isButton()) return;
 
+  /* =========================
+     💰 PRECIOS (ACTUALIZADO)
+  ========================= */
   if (interaction.customId === "prices") {
-    return interaction.reply({ content: "💰 Desde $X servicios", ephemeral: true });
+    return interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle("💰 Planes UziBoost")
+          .setDescription(
+`🟢 Básica — $15 USD
+• Soporte básico
+• Optimización ligera
+
+🟣 Legendaria — $25 USD
+• Optimización avanzada
+• Mejor rendimiento
+
+🔴 Avanzada — $35 USD
+• Optimización PRO completa
+• Configuración total`
+          )
+          .setColor("#22c55e")
+      ],
+      ephemeral: true
+    });
   }
 
   if (interaction.customId === "payments") {
-    return interaction.reply({ content: "💳 PayPal / Stripe / Transferencia", ephemeral: true });
+    return interaction.reply({
+      content: "💳 PayPal / Stripe / Transferencia",
+      ephemeral: true
+    });
   }
 
   if (interaction.customId === "requirements") {
-    return interaction.reply({ content: "⚙️ CPU, GPU, RAM mínimo 8GB", ephemeral: true });
+    return interaction.reply({
+      content: "⚙️ CPU, GPU, RAM mínimo 8GB",
+      ephemeral: true
+    });
   }
 
-  /* ===== TICKET ===== */
+  /* =========================
+     🎫 CREAR TICKET
+  ========================= */
   if (interaction.customId === "open_ticket") {
 
     const channel = await interaction.guild.channels.create({
@@ -156,7 +191,7 @@ client.on("interactionCreate", async (interaction) => {
       ]
     });
 
-    const btn = new ActionRowBuilder().addComponents(
+    const closeBtn = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("close_ticket")
         .setLabel("🔒 Cerrar Ticket")
@@ -170,7 +205,7 @@ client.on("interactionCreate", async (interaction) => {
 
     await channel.send({
       embeds: [embed],
-      components: [btn]
+      components: [closeBtn]
     });
 
     return interaction.reply({
@@ -179,10 +214,24 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  /* ===== CLOSE ===== */
+  /* =========================
+     🔒 CERRAR TICKET
+  ========================= */
   if (interaction.customId === "close_ticket") {
     await interaction.reply("🔒 Cerrando...");
     setTimeout(() => interaction.channel.delete().catch(() => {}), 1500);
+  }
+});
+
+/* =========================
+   🤖 IA EN TICKETS
+========================= */
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  if (message.channel.name?.includes("ticket")) {
+    const response = await ai(message.content);
+    return message.reply(response);
   }
 });
 
