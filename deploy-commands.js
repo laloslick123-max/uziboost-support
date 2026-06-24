@@ -2,23 +2,14 @@ import { REST, Routes, SlashCommandBuilder } from "discord.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-/* =========================
-   SLASH COMMANDS
-========================= */
 const commands = [
   new SlashCommandBuilder()
     .setName("panel")
     .setDescription("Abrir panel de tickets UziBoost")
-].map(command => command.toJSON());
+].map(c => c.toJSON());
 
-/* =========================
-   REST CLIENT
-========================= */
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
-/* =========================
-   DEPLOY FUNCTION
-========================= */
 (async () => {
   try {
     console.log("🔄 Registrando slash commands...");
@@ -31,8 +22,8 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
       { body: commands }
     );
 
-    console.log("✅ Slash commands registrados correctamente");
-  } catch (error) {
-    console.error("❌ Error al registrar comandos:", error);
+    console.log("✅ Slash commands listos");
+  } catch (err) {
+    console.log(err);
   }
 })();
