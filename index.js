@@ -1,3 +1,4 @@
+console.log("🔥 VERSION NUEVA CARGADA");
 import {
   Client,
   GatewayIntentBits,
