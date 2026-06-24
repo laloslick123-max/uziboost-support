@@ -26,28 +26,28 @@ const client = new Client({
 });
 
 /* =========================
-   🤖 IA SIMPLE (SEGURA)
+   IA (SIMPLE PERO FUNCIONAL)
 ========================= */
-function aiResponse(text) {
+function ai(text) {
   const msg = text.toLowerCase();
 
-  if (msg.includes("precio")) return "💰 Nuestros precios están disponibles en UziBoost.";
-  if (msg.includes("tiempo")) return "⏱️ Tiempo estimado: 5-30 minutos.";
+  if (msg.includes("precio")) return "💰 Precios disponibles en UziBoost.";
+  if (msg.includes("tiempo")) return "⏱️ Tiempo estimado: 5-30 min.";
   if (msg.includes("hola")) return "👋 Hola! Bienvenido a UziBoost Support.";
-  if (msg.includes("ayuda")) return "🧠 Describe tu problema y te ayudamos.";
+  if (msg.includes("ayuda")) return "🧠 Describe tu problema y te ayudo.";
 
-  return "🤖 Un miembro del staff te responderá pronto.";
+  return "🤖 Un staff te atenderá pronto.";
 }
 
 /* =========================
    READY
 ========================= */
 client.once("ready", () => {
-  console.log(`✅ UziBoost SAAS ONLINE como ${client.user.tag}`);
+  console.log(`✅ UziBoost ONLINE como ${client.user.tag}`);
 });
 
 /* =========================
-   PANEL ELEGANTE PRO
+   PANEL (ESTILO LIMPIO COMO EL TUYO)
 ========================= */
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -55,17 +55,17 @@ client.on("messageCreate", async (message) => {
   if (message.content === "!panel") {
 
     const embed = new EmbedBuilder()
-      .setTitle("🎫 UziBoost Support Center")
+      .setTitle("🎫 UziBoost Support System")
       .setDescription(
-`✨ Bienvenido al sistema oficial de soporte UziBoost
+`✨ Bienvenido al sistema de soporte UziBoost
 
-Selecciona una opción para recibir asistencia personalizada.
+Selecciona una opción:
 
-🔧 Soporte técnico profesional
 💰 Información de precios
-⚡ Optimización avanzada
+💳 Métodos de pago
+⚙️ Requisitos técnicos
 
-📌 Atención rápida y profesional 24/7`
+🎫 Abre un ticket para soporte personalizado`
       )
       .setColor("#a855f7");
 
@@ -103,13 +103,12 @@ Selecciona una opción para recibir asistencia personalizada.
      IA EN TICKETS
   ========================= */
   if (message.channel.name?.includes("ticket")) {
-    const reply = aiResponse(message.content);
-    return message.reply(reply);
+    return message.reply(ai(message.content));
   }
 });
 
 /* =========================
-   INTERACCIONES
+   BOTONES + TICKETS
 ========================= */
 client.on("interactionCreate", async (interaction) => {
 
@@ -118,14 +117,14 @@ client.on("interactionCreate", async (interaction) => {
   /* ===== INFO BUTTONS ===== */
   if (interaction.customId === "prices") {
     return interaction.reply({
-      content: "💰 Precios desde $X - servicios premium UziBoost",
+      content: "💰 Precios desde $X según servicio",
       ephemeral: true
     });
   }
 
   if (interaction.customId === "payments") {
     return interaction.reply({
-      content: "💳 Métodos: PayPal / Stripe / Transferencia",
+      content: "💳 PayPal / Transferencia / Stripe",
       ephemeral: true
     });
   }
@@ -137,7 +136,7 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  /* ===== CREAR TICKET ===== */
+  /* ===== TICKET ===== */
   if (interaction.customId === "open_ticket") {
 
     const channel = await interaction.guild.channels.create({
@@ -159,7 +158,7 @@ client.on("interactionCreate", async (interaction) => {
       ]
     });
 
-    const closeBtn = new ActionRowBuilder().addComponents(
+    const btn = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("close_ticket")
         .setLabel("🔒 Cerrar Ticket")
@@ -169,17 +168,17 @@ client.on("interactionCreate", async (interaction) => {
     const embed = new EmbedBuilder()
       .setTitle("🎫 Ticket Abierto")
       .setDescription(
-`✨ Gracias por contactar UziBoost Support
+`✨ Gracias por contactar UziBoost
 
-Describe tu problema con detalle y un staff te atenderá pronto.
+Describe tu problema con detalle para ayudarte más rápido.
 
-📌 Mientras más información, más rápido te ayudamos.`
+🚀 Nuestro equipo responderá pronto.`
       )
       .setColor("#22c55e");
 
     await channel.send({
       embeds: [embed],
-      components: [closeBtn]
+      components: [btn]
     });
 
     return interaction.reply({
@@ -188,7 +187,7 @@ Describe tu problema con detalle y un staff te atenderá pronto.
     });
   }
 
-  /* ===== CERRAR TICKET ===== */
+  /* ===== CERRAR ===== */
   if (interaction.customId === "close_ticket") {
     await interaction.reply("🔒 Cerrando ticket...");
     setTimeout(() => interaction.channel.delete().catch(() => {}), 2000);
