@@ -5,7 +5,7 @@ dotenv.config();
 const commands = [
   new SlashCommandBuilder()
     .setName("panel")
-    .setDescription("Abrir panel de tickets UziBoost")
+    .setDescription("Abrir panel UziBoost")
 ].map(c => c.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
