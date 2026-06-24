@@ -2,22 +2,17 @@ import {
   Client,
   GatewayIntentBits,
   Partials,
+  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
-  PermissionsBitField,
-  EmbedBuilder
+  PermissionsBitField
 } from "discord.js";
 
 import dotenv from "dotenv";
-import OpenAI from "openai";
-
 dotenv.config();
 
-/* =========================
-   CLIENTE DISCORD
-========================= */
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -28,61 +23,27 @@ const client = new Client({
 });
 
 /* =========================
-   IA OPENAI
-========================= */
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-async function aiResponse(text) {
-  try {
-    const res = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Eres UziBoost Support AI. Ayudas con soporte técnico, PCs, optimización y ventas. Responde claro, corto y profesional."
-        },
-        {
-          role: "user",
-          content: text
-        }
-      ],
-      temperature: 0.7
-    });
-
-    return res.choices[0].message.content;
-  } catch (err) {
-    console.log(err);
-    return "⚠️ IA no disponible en este momento.";
-  }
-}
-
-/* =========================
    READY
 ========================= */
 client.once("ready", () => {
-  console.log(`✅ UziBoost SAAS ONLINE: ${client.user.tag}`);
+  console.log(`✅ UziBoost ONLINE como ${client.user.tag}`);
 });
 
 /* =========================
-   PANEL PRO
+   SLASH COMMAND PANEL
 ========================= */
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+client.on("interactionCreate", async (interaction) => {
 
-  if (message.content === "!panel") {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "panel") {
+
     const embed = new EmbedBuilder()
       .setTitle("🎫 UziBoost Support System")
       .setDescription(
-        `Bienvenido al sistema de soporte.
-
-🔧 Soporte técnico
-💰 Compras y precios
-⚡ Optimización PC
-
-Selecciona una opción para abrir ticket.`
+        "Bienvenido al panel de soporte.\n\n" +
+        "🔧 Soporte técnico\n💰 Compras\n⚡ Optimización PC\n\n" +
+        "Selecciona una opción abajo."
       )
       .setColor("#a855f7");
 
@@ -111,63 +72,42 @@ Selecciona una opción para abrir ticket.`
 
       new ButtonBuilder()
         .setCustomId("close_ticket")
-        .setLabel("❌ Cerrar Ticket")
+        .setLabel("❌ Cerrar")
         .setStyle(ButtonStyle.Danger)
     );
 
-    return message.channel.send({
+    return interaction.reply({
       embeds: [embed],
       components: [row1, row2]
     });
   }
-
-  /* =========================
-     IA EN TICKETS
-  ========================= */
-  if (message.channel.name?.includes("ticket")) {
-    const reply = await aiResponse(message.content);
-    return message.reply(reply);
-  }
 });
 
 /* =========================
-   INTERACCIONES
+   BOTONES
 ========================= */
 client.on("interactionCreate", async (interaction) => {
+
   if (!interaction.isButton()) return;
 
-  /* ===== BOTONES INFO ===== */
   if (interaction.customId === "prices") {
-    return interaction.reply({
-      content: "💰 Precios desde $X optimización PC",
-      ephemeral: true
-    });
+    return interaction.reply({ content: "💰 Precios desde $X", ephemeral: true });
   }
 
   if (interaction.customId === "payments") {
-    return interaction.reply({
-      content: "💳 Pagos: PayPal / Stripe / Transferencia",
-      ephemeral: true
-    });
+    return interaction.reply({ content: "💳 PayPal / Stripe / Transferencia", ephemeral: true });
   }
 
   if (interaction.customId === "requirements") {
-    return interaction.reply({
-      content: "📋 Necesitas CPU, GPU, RAM y Windows actualizado",
-      ephemeral: true
-    });
+    return interaction.reply({ content: "📋 CPU, GPU, RAM, Windows actualizado", ephemeral: true });
   }
 
-  /* ===== CREAR TICKET ===== */
+  /* ===== TICKETS ===== */
   if (interaction.customId === "open_ticket") {
-    const category = interaction.guild.channels.cache.find(
-      c => c.name === "🎫・SOPORTE Y PEDIDOS"
-    );
 
     const channel = await interaction.guild.channels.create({
       name: `ticket-${interaction.user.username}`,
       type: ChannelType.GuildText,
-      parent: category?.id || null,
       permissionOverwrites: [
         {
           id: interaction.guild.id,
@@ -202,14 +142,10 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  /* ===== CERRAR ===== */
   if (interaction.customId === "close_ticket") {
-    await interaction.reply("🔒 Cerrando ticket...");
+    await interaction.reply("🔒 Cerrando...");
     setTimeout(() => interaction.channel.delete().catch(() => {}), 1500);
   }
 });
 
-/* =========================
-   LOGIN
-========================= */
 client.login(process.env.TOKEN);
